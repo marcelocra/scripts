@@ -88,7 +88,7 @@
   "customizations": {
     "vscode": {
       "extensions": [
-         // AI Assistants
+        // AI Assistants
         "anthropic.claude-code",
         "github.copilot-chat",
         "github.copilot",
