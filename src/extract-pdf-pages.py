@@ -3,11 +3,12 @@
 Extract the first N pages from multiple PDF files.
 
 Usage:
-    python extract-pdf-pages.py <input_directory> <num_pages> [output_directory]
+    python extract-pdf-pages.py <input_directory> <num_pages> [output_directory] [--skip-first]
 
 Example:
     python extract-pdf-pages.py ./pdfs 3
     python extract-pdf-pages.py ./pdfs 5 ./extracted
+    python extract-pdf-pages.py ./pdfs 4 ./extracted --skip-first
 """
 
 import sys
@@ -20,16 +21,18 @@ except ImportError:
     sys.exit(1)
 
 
-def extract_first_n_pages(input_path, output_path, num_pages):
+def extract_first_n_pages(input_path, output_path, num_pages, skip_first=False):
     """Extract the first N pages from a PDF file."""
     try:
         reader = PdfReader(input_path)
         writer = PdfWriter()
 
-        # Get actual number of pages to extract (in case PDF has fewer pages than N)
-        pages_to_extract = min(num_pages, len(reader.pages))
+        # Calculate start page and pages to extract
+        start_page = 1 if skip_first else 0
+        end_page = start_page + num_pages
+        pages_to_extract = min(end_page, len(reader.pages))
 
-        for page_num in range(pages_to_extract):
+        for page_num in range(start_page, pages_to_extract):
             writer.add_page(reader.pages[page_num])
 
         with open(output_path, "wb") as output_file:
@@ -45,9 +48,13 @@ def main():
         print(__doc__)
         sys.exit(1)
 
-    input_dir = Path(sys.argv[1])
-    num_pages = int(sys.argv[2])
-    output_dir = Path(sys.argv[3]) if len(sys.argv) > 3 else input_dir / "extracted"
+    # Parse arguments
+    skip_first = "--skip-first" in sys.argv
+    args = [arg for arg in sys.argv[1:] if arg != "--skip-first"]
+
+    input_dir = Path(args[0])
+    num_pages = int(args[1])
+    output_dir = Path(args[2]) if len(args) > 2 else input_dir / "extracted"
 
     if not input_dir.exists():
         print(f"Error: Input directory '{input_dir}' does not exist")
@@ -67,17 +74,25 @@ def main():
         sys.exit(0)
 
     print(f"Found {len(pdf_files)} PDF files")
-    print(f"Extracting first {num_pages} pages from each...")
+    if skip_first:
+        print(f"Extracting pages 2-{num_pages + 1} from each (skipping first page)...")
+    else:
+        print(f"Extracting first {num_pages} pages from each...")
     print(f"Output directory: {output_dir}\n")
 
     success_count = 0
     error_count = 0
 
     for pdf_path in pdf_files:
-        output_filename = f"{pdf_path.stem}_first_{num_pages}_pages.pdf"
+        if skip_first:
+            output_filename = f"{pdf_path.stem}_pages_2_to_{num_pages + 1}.pdf"
+        else:
+            output_filename = f"{pdf_path.stem}_first_{num_pages}_pages.pdf"
         output_path = output_dir / output_filename
 
-        success, result = extract_first_n_pages(pdf_path, output_path, num_pages)
+        success, result = extract_first_n_pages(
+            pdf_path, output_path, num_pages, skip_first
+        )
 
         if success:
             print(f"✓ {pdf_path.name} -> {output_filename} ({result} pages)")
